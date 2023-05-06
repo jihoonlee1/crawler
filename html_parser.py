@@ -38,7 +38,7 @@ def _hrefs(relevant_links, root_netloc):
 
 def node_hrefs(node_raw_html, root_netloc):
 	node_html_doc = _html_doc(node_raw_html)
-	all_links_inc_dup = _all_links_inc_dup(node_html_doc, root_netloc)
+	all_links_inc_dup = _all_links_inc_dup(node_html_doc)
 	relevant_links = _relevant_links(all_links_inc_dup, root_netloc)
 	return _hrefs(relevant_links, root_netloc)
 

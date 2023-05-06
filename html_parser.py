@@ -1,8 +1,8 @@
-import re
 import bs4
 import goose3
-import urllib.parse
+import re
 import requests
+import urllib.parse
 
 
 def _html_doc(raw_html):

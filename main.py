@@ -14,7 +14,23 @@ LOCK = threading.Lock()
 DEPTH = 3
 
 
-def _bfs(root, news_pattern, domain_id):
+def _write_to_db():
+	with database.connect() as con:
+		cur = con.cursor()
+		num_workers = NUM_SCRAP_THREADS
+		while num_workers > 0:
+			item = WRITE_DB_QUEUE.get()
+			if item is None:
+				num_workers -= 1
+				continue
+			domain_id, href, title, body, unix_timestamp = item
+			cur.execute("SELECT ifnull(max(id)+1, 0) FROM news")
+			news_id, = cur.fetchone()
+			cur.execute("INSERT INTO news VALUES(?,?,?,?,?,?)", (news_id, domain_id, href, title, body, unix_timestamp))
+			con.commit()
+
+
+def _bfs(domain_id, root, news_pattern):
 	global SCRAP_QUEUE
 	global DEPTH
 	global WRITE_DB_QUEUE
@@ -51,22 +67,6 @@ def _bfs(root, news_pattern, domain_id):
 			continue
 
 
-def _write_to_db():
-	with database.connect() as con:
-		cur = con.cursor()
-		num_workers = NUM_SCRAP_THREADS
-		while num_workers > 0:
-			item = WRITE_DB_QUEUE.get()
-			if item is None:
-				num_workers -= 1
-				continue
-			domain_id, href, title, body, unix_timestamp = item
-			cur.execute("SELECT ifnull(max(id)+1, 0) FROM news")
-			news_id, = cur.fetchone()
-			cur.execute("INSERT INTO news VALUES(?,?,?,?,?,?)", (news_id, domain_id, href, title, body, unix_timestamp))
-			con.commit()
-
-
 def main():
 	with database.connect() as con:
 		cur = con.cursor()
@@ -94,7 +94,7 @@ def main():
 			SCRAP_QUEUE.put((item, is_last))
 
 	for i in range(NUM_SCRAP_THREADS):
-		t = threading.Thread(target=_bfs, args=(cnn_root, cnn_news_pattern))
+		t = threading.Thread(target=_bfs, args=(cnn_id, cnn_root, cnn_news_pattern))
 		t.start()
 
 	for t in scrap_threads:

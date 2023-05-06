@@ -3,7 +3,7 @@ import contextlib
 import sqlite3
 
 
-STATEMENTS = [
+statements = [
 """
 CREATE TABLE IF NOT EXISTS domains(
 	id  INTEGER NOT NULL PRIMARY KEY,

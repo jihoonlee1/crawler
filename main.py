@@ -10,12 +10,12 @@ import database
 
 SCRAP_QUEUE = queue.Queue()
 WRITE_DB_QUEUE = queue.Queue()
-NUM_SCRAP_THREADS = 3
+NUM_SCRAP_THREADS = 2
 VISITED = set()
 LOCK = threading.Lock()
 DEPTH = 1
 NEWS_PATTERN = re.compile(r"https:\/\/www\.cnn\.com\/(2[0-9]{3})\/([0-9]{2})\/([0-9]{2})\/.+$")
-ROOT = "https://www.cnn.com/"
+ROOT = "https://www.cnn.com"
 
 
 def _raw_html(href):
@@ -50,7 +50,7 @@ def _hrefs(relevant_links, root_netloc=ROOT):
 	for item in relevant_links:
 		temp = urllib.parse.urlparse(item["href"])
 		target_path = temp.path.strip()
-		final_path = f"https://{root_netloc}{target_path}"
+		final_path = f"{root_netloc}{target_path}"
 		result.add(final_path)
 	return result
 
@@ -65,7 +65,7 @@ def _node_hrefs(node_raw_html):
 def _article(raw_html):
 	with goose3.Goose() as goose:
 		article = goose.extract(raw_html=raw_html)
-		return (article.title, article.body, article.publish_date)
+		return (article.title, article.cleaned_text, article.publish_date)
 
 
 def _is_news(href):
@@ -77,18 +77,20 @@ def _is_news(href):
 
 def _bfs():
 	global SCRAP_QUEUE
-	global WRITE_DB_QUEUE
-	global VISITED
 	global DEPTH
+	global WRITE_DB_QUEUE
+	global LOCK
 
 	while SCRAP_QUEUE:
 		if DEPTH == 0:
+			WRITE_DB_QUEUE.put(None)
 			break
 		node_href, node_is_last = SCRAP_QUEUE.get()
+		print(f"Scraping: {node_href}")
 		node_raw_html = _raw_html(node_href)
 		if _is_news(node_href):
-			WRITE_DB_QUEUE.append(_article(node_raw_html))
-		print(f"Scraping: {node_href}")
+			title, body, publish_date = _article(node_raw_html)
+			WRITE_DB_QUEUE.put((node_href, title, body, publish_date))
 		node_graph = [href for href in _node_hrefs(node_raw_html)]
 
 		len_node_graph = len(node_graph)
@@ -107,12 +109,30 @@ def _bfs():
 		print(f"Depth: {DEPTH}")
 
 
+def _write_to_db():
+	with database.connect() as con:
+		cur = con.cursor()
+		num_workers = NUM_SCRAP_THREADS
+		while num_workers > 0:
+			item = WRITE_DB_QUEUE.get()
+			if item is None:
+				num_workers -= 1
+				continue
+			href, title, body, publish_date = item
+			cur.execute("SELECT ifnull(max(id)+1, 0) FROM articles")
+			article_id, = cur.fetchone()
+			cur.execute("INSERT INTO articles VALUES(?,?,?,?,?)", (article_id, href, title, body, publish_date))
+			con.commit()
+
+
 def main():
 	VISITED.add(ROOT)
 	root_raw_html = _raw_html(ROOT)
 	root_graph = [href for href in _node_hrefs(root_raw_html)]
 	len_root_graph = len(root_graph)
 	scrap_threads = []
+	write_db_thread = threading.Thread(target=_write_to_db)
+	write_db_thread.start()
 
 	for idx, item in enumerate(root_graph):
 		is_last = False
@@ -128,6 +148,8 @@ def main():
 
 	for t in scrap_threads:
 		t.join()
+
+	write_db_thread.join()
 
 
 if __name__ == "__main__":

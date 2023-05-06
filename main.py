@@ -3,6 +3,8 @@ import bs4
 import urllib.parse
 import queue
 import threading
+import goose3
+import re
 
 
 SCRAP_QUEUE = queue.Queue()
@@ -10,18 +12,31 @@ NUM_SCRAP_THREADS = 3
 VISITED = set()
 LOCK = threading.Lock()
 DEPTH = 1
+NEWS_PATTERN = re.compile(r"https:\/\/www\.cnn\.com\/(2[0-9]{3})\/([0-9]{2})\/([0-9]{2})\/.+$")
 
 
-def _get_html_doc(root):
+def _get_raw_html(root):
 	r = requests.get(root)
-	temp = r.text
-	html_doc = bs4.BeautifulSoup(temp, "html.parser")
+	return r.text
+
+
+def _get_article(raw_html):
+	with goose3.Goose() as goose:
+		return goose.extract(raw_html=raw_html)
+
+
+def _get_html_doc(raw_html):
+	html_doc = bs4.BeautifulSoup(raw_html, "html.parser")
 	return html_doc
 
 
 def _get_all_links(html_doc):
 	links = html_doc.find_all("a", {"href": True})
 	return links
+
+
+def is_news(href):
+	return NEWS_PATTERN.search(href)
 
 
 def _get_relevant_links(links, root_netloc):
@@ -46,9 +61,16 @@ def _get_final_hrefs(relevant_links, root_netloc):
 	return result
 
 
+def _article(raw_html):
+	with goose3.Goose() as goose:
+		article = goose.extract(raw_html=raw_html)
+		return (article.title, article.body, article.publish_date)
+
+
 def _hrefs(root):
 	root_netloc = urllib.parse.urlparse(root).netloc
-	html_doc = _get_html_doc(root)
+	raw_html = _get_raw_html(root)
+	html_doc = _get_html_doc(raw_html)
 	links = _get_all_links(html_doc)
 	relevant_links = _get_relevant_links(links, root_netloc)
 	final_hrefs = _get_final_hrefs(relevant_links, root_netloc)

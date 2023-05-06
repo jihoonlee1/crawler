@@ -10,10 +10,10 @@ import database
 
 SCRAP_QUEUE = queue.Queue()
 WRITE_DB_QUEUE = queue.Queue()
-NUM_SCRAP_THREADS = 2
+NUM_SCRAP_THREADS = 5
 VISITED = set()
 LOCK = threading.Lock()
-DEPTH = 1
+DEPTH = 2
 NEWS_PATTERN = re.compile(r"https:\/\/www\.cnn\.com\/(2[0-9]{3})\/([0-9]{2})\/([0-9]{2})\/.+$")
 ROOT = "https://www.cnn.com"
 
@@ -85,28 +85,31 @@ def _bfs():
 		if DEPTH == 0:
 			WRITE_DB_QUEUE.put(None)
 			break
-		node_href, node_is_last = SCRAP_QUEUE.get()
-		print(f"Scraping: {node_href}")
-		node_raw_html = _raw_html(node_href)
-		if _is_news(node_href):
-			title, body, publish_date = _article(node_raw_html)
-			WRITE_DB_QUEUE.put((node_href, title, body, publish_date))
-		node_graph = [href for href in _node_hrefs(node_raw_html)]
+		try:
+			node_href, node_is_last = SCRAP_QUEUE.get()
+			print(f"Scraping: {node_href} Depth: {DEPTH}")
+			node_raw_html = _raw_html(node_href)
+			if _is_news(node_href):
+				title, body, publish_date = _article(node_raw_html)
+				WRITE_DB_QUEUE.put((node_href, title, body, publish_date))
+			node_graph = [href for href in _node_hrefs(node_raw_html)]
 
-		len_node_graph = len(node_graph)
-		if node_is_last:
-			with LOCK:
-				DEPTH -= 1
+			len_node_graph = len(node_graph)
+			if node_is_last:
+				with LOCK:
+					DEPTH -= 1
 
-		for idx, item in enumerate(node_graph):
-			if not item in VISITED:
-				SCRAP_QUEUE.put((item, False))
-				VISITED.add(item)
-			else:
-				if idx == len_node_graph-1 and node_is_last:
-					new_last, _ = SCRAP_QUEUE.get(-1)
-					SCRAP_QUEUE.put((new_last, True))
-		print(f"Depth: {DEPTH}")
+			for idx, item in enumerate(node_graph):
+				if not item in VISITED:
+					SCRAP_QUEUE.put((item, False))
+					VISITED.add(item)
+				else:
+					if idx == len_node_graph-1 and node_is_last:
+						new_last, _ = SCRAP_QUEUE.get(-1)
+						SCRAP_QUEUE.put((new_last, True))
+		except Exception as e:
+			print(e)
+			continue
 
 
 def _write_to_db():

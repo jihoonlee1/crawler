@@ -20,7 +20,8 @@ months = {
 }
 
 tz_utc_diff_mapping = {
-	"EDT": 4
+	"EDT": 4,
+	"EST": 4
 }
 
 

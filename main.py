@@ -26,7 +26,7 @@ def _write_to_db(num_total_workers):
 			con.commit()
 
 
-def _bfs(domain_id, domain_url, domain_news_pattern, visited, depth, depth_lock):
+def _bfs(domain_id, domain_url, domain_news_pattern, visited, depth):
 	global SCRAP_QUEUE
 	global WRITE_DB_QUEUE
 
@@ -46,8 +46,7 @@ def _bfs(domain_id, domain_url, domain_news_pattern, visited, depth, depth_lock)
 			len_node_graph = len(node_graph)
 
 			if node_is_last:
-				with depth_lock:
-					depth -= 1
+				depth -= 1
 
 			for idx, item in enumerate(node_graph):
 				if not item in visited:
@@ -80,7 +79,6 @@ def main():
 			domain_news_pattern = re.compile(rf"{domain_news_pattern_str}")
 
 			depth = 2
-			depth_lock = threading.Lock()
 			visited = set()
 			visited.add(domain_url)
 
@@ -96,7 +94,7 @@ def main():
 				SCRAP_QUEUE.put((href, is_last))
 
 			for i in range(NUM_THREADS_PER_DOMAIN):
-				t = threading.Thread(target=_bfs, args=(domain_id, domain_url, domain_news_pattern, visited, depth, depth_lock))
+				t = threading.Thread(target=_bfs, args=(domain_id, domain_url, domain_news_pattern, visited, depth))
 				scrap_threads.append(t)
 				t.start()
 

@@ -86,23 +86,22 @@ def _bfs():
 			break
 		node_href, node_is_last = SCRAP_QUEUE.get()
 		node_raw_html = _raw_html(node_href)
-		if _is_news(root):
+		if _is_news(node_href):
 			WRITE_DB_QUEUE.append(_article(node_raw_html))
-		print(root, root_is_last)
-		graph = [href for href in _node_hrefs(node_raw_html)]
+		print(f"Scraping: {node_href}")
+		node_graph = [href for href in _node_hrefs(node_raw_html)]
 
-
-		len_graph = len(graph)
-		if root_is_last:
+		len_node_graph = len(node_graph)
+		if node_is_last:
 			with LOCK:
 				DEPTH -= 1
 
-		for idx, item in enumerate(graph):
+		for idx, item in enumerate(node_graph):
 			if not item in VISITED:
 				SCRAP_QUEUE.put((item, False))
 				VISITED.add(item)
 			else:
-				if idx == len_graph-1 and root_is_last:
+				if idx == len_node_graph-1 and node_is_last:
 					new_last, _ = SCRAP_QUEUE.get(-1)
 					SCRAP_QUEUE.put((new_last, True))
 		print(f"Depth: {DEPTH}")
@@ -112,12 +111,12 @@ def main():
 	VISITED.add(ROOT)
 	root_raw_html = _raw_html(ROOT)
 	root_graph = [href for href in _node_hrefs(root_raw_html)]
-	len_graph = len(root_graph)
+	len_root_graph = len(root_graph)
 	scrap_threads = []
 
 	for idx, item in enumerate(root_graph):
 		is_last = False
-		if idx == len_graph - 1:
+		if idx == len_root_graph - 1:
 			is_last = True
 		if not item in VISITED:
 			VISITED.add(item)

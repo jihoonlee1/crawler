@@ -25,13 +25,13 @@ CREATE TABLE IF NOT EXISTS domain_ignore_pattern(
 );
 """,
 """
-CREATE TABLE IF NOT EXISTS articles(
-	id           INTEGER NOT NULL PRIMARY KEY,
-	domain_id    INTEGER NOT NULL REFERENCES domains(id),
-	url          TEXT    NOT NULL,
-	title        TEXT,
-	body         TEXT,
-	publish_date TEXT    NOT NULL
+CREATE TABLE IF NOT EXISTS news(
+	id             INTEGER NOT NULL PRIMARY KEY,
+	domain_id      INTEGER NOT NULL REFERENCES domains(id),
+	url            TEXT    NOT NULL,
+	title          TEXT,
+	body           TEXT,
+	unix_timestamp INTEGER NOT NULL
 );
 """
 ]

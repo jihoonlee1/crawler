@@ -9,6 +9,7 @@ def _html_doc(raw_html):
 	html_doc = bs4.BeautifulSoup(raw_html, "html.parser")
 	return html_doc
 
+
 def _all_links_inc_dup(html_doc):
 	links = html_doc.find_all("a", {"href": True})
 	return links

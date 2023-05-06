@@ -55,10 +55,10 @@ def _insert_domains(con, cur):
 				cur.execute("INSERT INTO domains VALUES(?,?)", (domain_id, url))
 
 				for pattern in news_pattern:
-					cur.execute("INSERT INTO domain_news_pattern VALUES(?,?)", (domain_id, pattern))
+					cur.execute("INSERT OR IGNORE INTO domain_news_pattern VALUES(?,?)", (domain_id, pattern))
 
 				for pattern in ignore_pattern:
-					cur.execute("INSERT INTO domain_ignore_pattern VALUES(?,?)", (domain_id, pattern))
+					cur.execute("INSERT OR IGNORE INTO domain_ignore_pattern VALUES(?,?)", (domain_id, pattern))
 		con.commit()
 
 

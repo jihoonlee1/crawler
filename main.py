@@ -13,7 +13,7 @@ WRITE_DB_QUEUE = queue.Queue()
 NUM_SCRAP_THREADS = 5
 VISITED = set()
 LOCK = threading.Lock()
-DEPTH = 2
+DEPTH = 3
 NEWS_PATTERN = re.compile(r"https:\/\/www\.cnn\.com\/(2[0-9]{3})\/([0-9]{2})\/([0-9]{2})\/.+$")
 ROOT = "https://www.cnn.com"
 

@@ -41,9 +41,10 @@ def _bfs(domain_id, domain_url, domain_news_pattern, visited, depth, depth_lock)
 			if utils.is_news(domain_news_pattern, node_href):
 				title, body, unix_timestamp = html_parser.news(node_raw_html)
 				WRITE_DB_QUEUE.put((domain_id, node_href, title, body, unix_timestamp))
-			node_graph = [href for href in html_parser.node_hrefs(node_raw_html, domain_url)]
 
+			node_graph = [href for href in html_parser.node_hrefs(node_raw_html, domain_url)]
 			len_node_graph = len(node_graph)
+
 			if node_is_last:
 				with depth_lock:
 					depth -= 1

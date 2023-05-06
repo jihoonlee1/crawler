@@ -43,15 +43,14 @@ def _bfs(domain_id, domain_url, domain_news_pattern, q, visited, depth):
 			if utils.is_news(domain_news_pattern, node_url):
 				title, body, timestamp = html_parser.news(node_raw_html)
 				write_db_queue.put((domain_id, node_url, title, body, timestamp))
+			node_graph = [href for href in html_parser.node_hrefs(node_raw_html, domain_url)]
+			num_node_graph = len(node_graph)
+			for idx, href in enumerate(node_graph):
+				if href not in visited:
+					visited.add(href)
+					q.put((href, False))
 		except:
 			pass
-		node_graph = [href for href in html_parser.node_hrefs(node_raw_html, domain_url)]
-		num_node_graph = len(node_graph)
-
-		for idx, href in enumerate(node_graph):
-			if href not in visited:
-				visited.add(href)
-				q.put((href, False))
 		if node_is_last:
 			new_last, _ = q.get()
 			q.put(new_last, True)

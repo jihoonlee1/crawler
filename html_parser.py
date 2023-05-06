@@ -3,6 +3,7 @@ import goose3
 import re
 import requests
 import urllib.parse
+import utils
 
 
 def _html_doc(raw_html):
@@ -44,17 +45,10 @@ def node_hrefs(node_raw_html, root_netloc):
 	return _hrefs(relevant_links, root_netloc)
 
 
-def article(raw_html):
+def news(raw_html):
 	with goose3.Goose() as goose:
-		article = goose.extract(raw_html=raw_html)
-		return (article.title, article.cleaned_text, article.publish_date)
-
-
-def is_news(news_pattern, href):
-	test = news_pattern.search(href)
-	if test is not None:
-		return True
-	return False
+		news= goose.extract(raw_html=raw_html)
+		return (news.title, news.cleaned_text, utils.time_to_unix(news.publish_date))
 
 
 def raw_html(href):

@@ -3,6 +3,7 @@ import html_parser
 import queue
 import re
 import threading
+import utils
 
 
 SCRAP_QUEUE = queue.Queue()
@@ -11,11 +12,9 @@ NUM_SCRAP_THREADS = 5
 VISITED = set()
 LOCK = threading.Lock()
 DEPTH = 3
-NEWS_PATTERN = re.compile(r"https:\/\/www\.cnn\.com\/(2[0-9]{3})\/([0-9]{2})\/([0-9]{2})\/.+$")
-ROOT = "https://www.cnn.com"
 
 
-def _bfs():
+def _bfs(root, news_pattern, domain_id):
 	global SCRAP_QUEUE
 	global DEPTH
 	global WRITE_DB_QUEUE
@@ -29,10 +28,10 @@ def _bfs():
 			node_href, node_is_last = SCRAP_QUEUE.get()
 			print(f"Scraping: {node_href} Depth: {DEPTH}")
 			node_raw_html = html_parser.raw_html(node_href)
-			if html.parser.is_news(NEWS_PATTERN, node_href):
-				title, body, publish_date = html_parser.article(node_raw_html)
-				WRITE_DB_QUEUE.put((node_href, title, body, publish_date))
-			node_graph = [href for href in html_parser.node_hrefs(node_raw_html, ROOT)]
+			if utils.is_news(news_pattern, node_href):
+				title, body, unix_timestamp = html_parser.news(node_raw_html)
+				WRITE_DB_QUEUE.put((domain_id, node_href, title, body, unix_timestamp))
+			node_graph = [href for href in html_parser.node_hrefs(node_raw_html, root)]
 
 			len_node_graph = len(node_graph)
 			if node_is_last:
@@ -61,17 +60,26 @@ def _write_to_db():
 			if item is None:
 				num_workers -= 1
 				continue
-			href, title, body, publish_date = item
-			cur.execute("SELECT ifnull(max(id)+1, 0) FROM articles")
-			article_id, = cur.fetchone()
-			cur.execute("INSERT INTO articles VALUES(?,?,?,?,?)", (article_id, href, title, body, publish_date))
+			domain_id, href, title, body, unix_timestamp = item
+			cur.execute("SELECT ifnull(max(id)+1, 0) FROM news")
+			news_id, = cur.fetchone()
+			cur.execute("INSERT INTO news VALUES(?,?,?,?,?,?)", (news_id, domain_id, href, title, body, unix_timestamp))
 			con.commit()
 
 
 def main():
-	VISITED.add(ROOT)
-	root_raw_html = html_parser.raw_html(ROOT)
-	root_graph = [href for href in html_parser.node_hrefs(root_raw_html, ROOT)]
+	with database.connect() as con:
+		cur = con.cursor()
+		cnn_id = 0
+		cur.execute("SELECT url FROM domains WHERE id = ?", (cnn_id, ))
+		cnn_root, = cur.fetchone()
+		cur.execute("SELECT pattern FROM domain_news_pattern WHERE domain_id = ?", (cnn_id, ))
+		cnn_news_pattern_str, = cur.fetchone()
+
+	cnn_news_pattern = re.compile(rf"{cnn_news_pattern_str}")
+	VISITED.add(cnn_root)
+	root_raw_html = html_parser.raw_html(cnn_root)
+	root_graph = [href for href in html_parser.node_hrefs(root_raw_html, cnn_root)]
 	len_root_graph = len(root_graph)
 	scrap_threads = []
 	write_db_thread = threading.Thread(target=_write_to_db)
@@ -86,7 +94,7 @@ def main():
 			SCRAP_QUEUE.put((item, is_last))
 
 	for i in range(NUM_SCRAP_THREADS):
-		t = threading.Thread(target=_bfs)
+		t = threading.Thread(target=_bfs, args=(cnn_root, cnn_news_pattern))
 		t.start()
 
 	for t in scrap_threads:

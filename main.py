@@ -11,14 +11,13 @@ WRITE_DB_QUEUE = queue.Queue()
 NUM_THREADS_PER_DOMAIN = 5
 
 
-def _write_to_db():
+def _write_to_db(num_total_workers):
 	with database.connect() as con:
 		cur = con.cursor()
-		num_workers = NUM_SCRAP_THREADS
-		while num_workers > 0:
+		while num_total_workers > 0:
 			item = WRITE_DB_QUEUE.get()
 			if item is None:
-				num_workers -= 1
+				num_total_workers -= 1
 				continue
 			domain_id, href, title, body, unix_timestamp = item
 			cur.execute("SELECT ifnull(max(id)+1, 0) FROM news")
@@ -65,10 +64,16 @@ def _bfs(domain_id, domain_url, domain_news_pattern, visited, depth, depth_lock)
 def main():
 	with database.connect() as con:
 		scrap_threads = []
-		write_db_thread = threading.Thread(target=_write_to_db)
 		cur = con.cursor()
 		cur.execute("SELECT id, url FROM domains")
-		for domain_id, domain_url in cur.fetchall():
+		domains = cur.fetchall()
+		num_domains = len(domains)
+		num_total_workers = num_domains * NUM_THREADS_PER_DOMAIN
+
+		write_db_thread = threading.Thread(target=_write_to_db, args=(num_total_workers, ))
+		write_db_thread.start()
+
+		for domain_id, domain_url in domains:
 			cur.execute("SELECT pattern FROM domain_news_pattern WHERE domain_id = ?", (domain_id, ))
 			domain_news_pattern_str, = cur.fetchone()
 			domain_news_pattern = re.compile(rf"{domain_news_pattern_str}")

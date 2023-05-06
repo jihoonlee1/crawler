@@ -21,10 +21,11 @@ def _write_to_db(num_total_workers):
 				print(f"Worker finished {current_workers}/{num_total_workers}")
 				continue
 			domain_id, href, title, body, unix_timestamp = item
-			cur.execute("SELECT ifnull(max(id)+1, 0) FROM news")
-			news_id, = cur.fetchone()
-			cur.execute("INSERT INTO news VALUES(?,?,?,?,?,?)", (news_id, domain_id, href, title, body, unix_timestamp))
-			con.commit()
+			if unix_timestamp is not None:
+				cur.execute("SELECT ifnull(max(id)+1, 0) FROM news")
+				news_id, = cur.fetchone()
+				cur.execute("INSERT INTO news VALUES(?,?,?,?,?,?)", (news_id, domain_id, href, title, body, unix_timestamp))
+				con.commit()
 
 
 def _bfs(domain_id, domain_url, domain_news_pattern, scrap_queue, visited, depth):

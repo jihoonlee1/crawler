@@ -29,8 +29,7 @@ def time_to_unix(time_str):
 	unix_time = None
 	time_pattern_match = pattern0.search(time_str)
 	if time_pattern_match is None:
-		temp = re.sub(r".*Posted:", "", time_str)
-		temp = time_str.replace("Posted:", "")
+		temp = re.sub(r".*Posted:", "", time_str, flags=re.IGNORECASE)
 		temp = re.sub(r"\|.+$", "", temp).strip()
 		mid = temp[3:-3].strip()
 		month = months[temp[:3]]

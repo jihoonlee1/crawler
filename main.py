@@ -8,10 +8,8 @@ import utils
 
 SCRAP_QUEUE = queue.Queue()
 WRITE_DB_QUEUE = queue.Queue()
-NUM_SCRAP_THREADS = 5
-VISITED = set()
-LOCK = threading.Lock()
-DEPTH = 3
+NUM_THREADS_PER_DOMAIN = 5
+DEPTH = 2
 
 
 def _write_to_db():

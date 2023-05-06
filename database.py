@@ -63,7 +63,7 @@ def _insert_domains(con, cur):
 
 
 def main():
-	with connect(mode="rwc") as con:
+	with connect(mode="rw") as con:
 		cur = con.cursor()
 		for st in STATEMENTS:
 			cur.execute(st)

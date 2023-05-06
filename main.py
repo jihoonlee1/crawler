@@ -9,7 +9,6 @@ import utils
 SCRAP_QUEUE = queue.Queue()
 WRITE_DB_QUEUE = queue.Queue()
 NUM_THREADS_PER_DOMAIN = 5
-DEPTH = 2
 
 
 def _write_to_db():
@@ -28,36 +27,34 @@ def _write_to_db():
 			con.commit()
 
 
-def _bfs(domain_id, root, news_pattern):
+def _bfs(domain_id, domain_url, domain_news_pattern, visited, depth, depth_lock):
 	global SCRAP_QUEUE
-	global DEPTH
 	global WRITE_DB_QUEUE
-	global LOCK
 
 	while SCRAP_QUEUE:
-		if DEPTH == 0:
+		if depth == 0:
 			WRITE_DB_QUEUE.put(None)
 			break
 		try:
 			node_href, node_is_last = SCRAP_QUEUE.get()
-			print(f"Scraping: {node_href} Depth: {DEPTH}")
+			print(f"Scraping: {node_href} Depth: {depth}")
 			node_raw_html = html_parser.raw_html(node_href)
-			if utils.is_news(news_pattern, node_href):
+			if utils.is_news(domain_news_pattern, node_href):
 				title, body, unix_timestamp = html_parser.news(node_raw_html)
 				WRITE_DB_QUEUE.put((domain_id, node_href, title, body, unix_timestamp))
-			node_graph = [href for href in html_parser.node_hrefs(node_raw_html, root)]
+			node_graph = [href for href in html_parser.node_hrefs(node_raw_html, domain_url)]
 
 			len_node_graph = len(node_graph)
 			if node_is_last:
-				with LOCK:
-					DEPTH -= 1
+				with depth_lock:
+					depth -= 1
 
 			for idx, item in enumerate(node_graph):
-				if not item in VISITED:
+				if not item in visited:
 					SCRAP_QUEUE.put((item, False))
-					VISITED.add(item)
+					visited.add(item)
 				else:
-					if idx == len_node_graph-1 and node_is_last:
+					if (idx == len_node_graph - 1) and node_is_last:
 						new_last, _ = SCRAP_QUEUE.get(-1)
 						SCRAP_QUEUE.put((new_last, True))
 		except Exception as e:
@@ -67,38 +64,40 @@ def _bfs(domain_id, root, news_pattern):
 
 def main():
 	with database.connect() as con:
+		scrap_threads = []
+		write_db_thread = threading.Thread(target=_write_to_db)
 		cur = con.cursor()
-		cnn_id = 0
-		cur.execute("SELECT url FROM domains WHERE id = ?", (cnn_id, ))
-		cnn_root, = cur.fetchone()
-		cur.execute("SELECT pattern FROM domain_news_pattern WHERE domain_id = ?", (cnn_id, ))
-		cnn_news_pattern_str, = cur.fetchone()
+		cur.execute("SELECT id, url FROM domains")
+		for domain_id, domain_url in cur.fetchall():
+			cur.execute("SELECT pattern FROM domain_news_pattern WHERE domain_id = ?", (domain_id, ))
+			domain_news_pattern_str, = cur.fetchone()
+			domain_news_pattern = re.compile(rf"{domain_news_pattern_str}")
 
-	cnn_news_pattern = re.compile(rf"{cnn_news_pattern_str}")
-	VISITED.add(cnn_root)
-	root_raw_html = html_parser.raw_html(cnn_root)
-	root_graph = [href for href in html_parser.node_hrefs(root_raw_html, cnn_root)]
-	len_root_graph = len(root_graph)
-	scrap_threads = []
-	write_db_thread = threading.Thread(target=_write_to_db)
-	write_db_thread.start()
+			depth = 2
+			depth_lock = threading.Lock()
+			visited = set()
+			visited.add(domain_url)
 
-	for idx, item in enumerate(root_graph):
-		is_last = False
-		if idx == len_root_graph - 1:
-			is_last = True
-		if not item in VISITED:
-			VISITED.add(item)
-			SCRAP_QUEUE.put((item, is_last))
+			domain_raw_html = html_parser.raw_html(domain_url)
+			domain_graph = [href for href in html_parser.node_hrefs(domain_raw_html, domain_url)]
+			len_domain_graph = len(domain_graph)
 
-	for i in range(NUM_SCRAP_THREADS):
-		t = threading.Thread(target=_bfs, args=(cnn_id, cnn_root, cnn_news_pattern))
-		t.start()
+			for idx, href in enumerate(domain_graph):
+				is_last = False
+				if idx == len_domain_graph - 1:
+					is_last = True
+				visited.add(href)
+				SCRAP_QUEUE.put((href, is_last))
 
-	for t in scrap_threads:
-		t.join()
+			for i in range(NUM_THREADS_PER_DOMAIN):
+				t = threading.Thread(target=_bfs, args=(domain_id, domain_url, domain_news_pattern, visited, depth, depth_lock))
+				scrap_threads.append(t)
+				t.start()
 
-	write_db_thread.join()
+		for t in scrap_threads:
+			t.join()
+
+		write_db_thread.join()
 
 
 if __name__ == "__main__":

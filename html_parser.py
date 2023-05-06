@@ -6,6 +6,9 @@ import urllib.parse
 import utils
 
 
+goose = goose3.Goose()
+
+
 def _html_doc(raw_html):
 	html_doc = bs4.BeautifulSoup(raw_html, "html.parser")
 	return html_doc
@@ -46,9 +49,8 @@ def node_hrefs(node_raw_html, root_netloc):
 
 
 def news(raw_html):
-	with goose3.Goose() as goose:
-		news= goose.extract(raw_html=raw_html)
-		return (news.title, news.cleaned_text, utils.time_to_unix(news.publish_date))
+	news = goose.extract(raw_html=raw_html)
+	return (news.title, news.cleaned_text, utils.time_to_unix(news.publish_date))
 
 
 def raw_html(href):

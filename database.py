@@ -8,22 +8,9 @@ dbpath = "database.sqlite"
 statements = [
 """
 CREATE TABLE IF NOT EXISTS domains(
-	id  INTEGER NOT NULL PRIMARY KEY,
-	url TEXT    NOT NULL
-);
-""",
-"""
-CREATE TABLE IF NOT EXISTS domain_news_pattern(
-	domain_id INTEGER NOT NULL REFERENCES domains(id),
-	pattern   TEXT    NOT NULL,
-	PRIMARY KEY(domain_id, pattern)
-);
-""",
-"""
-CREATE TABLE IF NOT EXISTS domain_ignore_pattern(
-	domain_id INTEGER NOT NULL REFERENCES domains(id),
-	pattern   TEXT    NOT NULL,
-	PRIMARY KEY(domain_id, pattern)
+	id           INTEGER NOT NULL PRIMARY KEY,
+	url          TEXT    NOT NULL,
+	news_pattern TEXT    NOT NULL
 );
 """,
 """
@@ -35,6 +22,9 @@ CREATE TABLE IF NOT EXISTS news(
 	body           TEXT,
 	unix_timestamp INTEGER NOT NULL
 );
+""",
+"""
+CREATE INDEX news0 ON news(domain_id, url, title, id);
 """
 ]
 
@@ -51,18 +41,11 @@ def _insert_domains():
 			for item in domains:
 				url = item["url"]
 				news_pattern = item["news_pattern"]
-				ignore_pattern = item["ignore_pattern"]
 				cur.execute("SELECT 1 FROM domains WHERE url = ?", (url, ))
 				if cur.fetchone() is None:
 					cur.execute("SELECT ifnull(max(id)+1, 0) FROM domains")
 					domain_id, = cur.fetchone()
-					cur.execute("INSERT INTO domains VALUES(?,?)", (domain_id, url))
-
-					for pattern in news_pattern:
-						cur.execute("INSERT OR IGNORE INTO domain_news_pattern VALUES(?,?)", (domain_id, pattern))
-
-					for pattern in ignore_pattern:
-						cur.execute("INSERT OR IGNORE INTO domain_ignore_pattern VALUES(?,?)", (domain_id, pattern))
+					cur.execute("INSERT INTO domains VALUES(?,?,?)", (domain_id, url, news_pattern))
 			con.commit()
 
 

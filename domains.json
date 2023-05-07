@@ -1,12 +1,22 @@
 [
 	{
-		"url": "https://www.cnn.com",
-		"news_pattern": ["https://www.cnn.com/([1-9][0-9]{3})/([0-9]{2})/([0-9]{2})/.+$"],
+		"url": "https://www.cnn.com/",
+		"news_pattern": ["https://www.cnn.com/[1-9][0-9]{3}/[0-9]{2}/[0-9]{2}/.+$"],
 		"ignore_pattern": []
 	},
 	{
-		"url": "https://www.cbc.ca",
-		"news_pattern": ["https://www.cbc.ca/news/.+/.+-1.([0-9]{7})$"],
+		"url": "https://www.cbc.ca/",
+		"news_pattern": ["https://www.cbc.ca/news/.+/.+-1.[0-9]{7}$"],
+		"ignore_pattern": []
+	},
+	{
+		"url": "https://www.cnbc.com/",
+		"news_pattern": ["https://www.cnbc.com/[1-9][0-9]{3}/[0-9]{2}/[0-9]{2}/.+$"],
+		"ignore_pattern": []
+	},
+	{
+		"url": "https://techcrunch.com/",
+		"news_pattern": ["https://techcrunch.com/[1-9][0-9]{3}/[0-9]{2}/[0-9]{2}/.+$"],
 		"ignore_pattern": []
 	}
 ]

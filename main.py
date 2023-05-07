@@ -6,7 +6,7 @@ import re
 import utils
 
 
-num_workers_per_domain = 10
+num_workers_per_domain = 5
 write_db_queue = queue.Queue()
 
 
@@ -77,7 +77,7 @@ def main():
 
 			q = queue.Queue()
 			visited = set()
-			visited.add(domain_url + "/")
+			visited.add(domain_url)
 			depth = 2
 
 			for idx, href in enumerate(domain_graph):

@@ -19,7 +19,8 @@ def _all_links_inc_dup(html_doc):
 	return links
 
 
-def _relevant_links(links, root_netloc):
+def _relevant_links(links, root_url):
+	root_netloc = urllib.parse.urlparse(root_url).netloc
 	result = []
 	for item in links:
 		temp = urllib.parse.urlparse(item["href"])
@@ -31,21 +32,20 @@ def _relevant_links(links, root_netloc):
 	return result
 
 
-def _hrefs(relevant_links, root_netloc):
+def _hrefs(relevant_links, root_url):
 	result = set()
 	for item in relevant_links:
 		temp = urllib.parse.urlparse(item["href"])
 		target_path = temp.path.strip()
-		final_path = f"{root_netloc}{target_path}"
-		result.add(final_path)
+		result.add(urllib.parse.urljoin(root_url, target_path))
 	return result
 
 
-def node_hrefs(node_raw_html, root_netloc):
+def node_hrefs(node_raw_html, root_url):
 	node_html_doc = _html_doc(node_raw_html)
 	all_links_inc_dup = _all_links_inc_dup(node_html_doc)
-	relevant_links = _relevant_links(all_links_inc_dup, root_netloc)
-	return _hrefs(relevant_links, root_netloc)
+	relevant_links = _relevant_links(all_links_inc_dup, root_url)
+	return _hrefs(relevant_links, root_url)
 
 
 def news(raw_html):

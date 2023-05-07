@@ -63,7 +63,7 @@ def _bfs(domain_id, domain_url, domain_news_pattern, q, visited, depth):
 def main():
 	with database.connect() as con:
 		cur = con.cursor()
-		cur.execute("SELECT id, url, news_pattern FROM domains WHERE id IN (1, 2)")
+		cur.execute("SELECT id, url, news_pattern FROM domains")
 		domains = cur.fetchall()
 		threads = []
 		num_domains = len(domains)

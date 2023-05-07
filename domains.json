@@ -20,7 +20,7 @@
 		"news_pattern": "https://globalnews.ca/news/[0-9]{7}/.+$"
 	},
 	{
-		"url": "https://www.bbc.com",
+		"url": "https://www.bbc.com/",
 		"news_pattern": "https://www.bbc.com/news/.+-[0-9]{8}$"
 	}
 ]

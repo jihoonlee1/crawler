@@ -14,15 +14,12 @@ def _write_to_db(num_total_workers):
 	with database.connect() as con:
 		cur = con.cursor()
 		remaining_workers = num_total_workers
-		while True:
-			if remaining_workers == 0 and write_db_queue.empty():
-				break
+		while remaining_workers > 0:
 			item = write_db_queue.get()
 			if item is None:
 				remaining_workers -= 1
 				continue
 			domain_id, url, title, body, timestamp = item
-			print(url)
 			cur.execute("SELECT 1 FROM news WHERE domain_id = ? AND (url = ? OR title = ?)", (domain_id, url, title))
 			if cur.fetchone() is None:
 				cur.execute("SELECT ifnull(max(id)+1, 0) FROM news")
@@ -35,15 +32,16 @@ def _bfs(domain_id, domain_url, domain_news_pattern, q, visited, depth):
 	while q:
 		item = q.get()
 		if item is None:
+			write_db_queue.put(None)
 			print(f"{domain_url} finishing")
 			break
 		node_url, node_is_last = item
+		print(node_url)
 		if node_is_last:
 			depth -= 1
 			if depth == 0:
 				for _ in range(num_workers_per_domain):
 					q.put(None)
-					write_db_queue.put(None)
 				continue
 		try:
 			node_raw_html = html_parser.raw_html(node_url)
@@ -59,14 +57,13 @@ def _bfs(domain_id, domain_url, domain_news_pattern, q, visited, depth):
 		except:
 			pass
 		if node_is_last:
-			new_last, _ = q.get()
-			q.put(new_last, True)
-
+			new_last, _ = q.get(-1)
+			q.put((new_last, True))
 
 def main():
 	with database.connect() as con:
 		cur = con.cursor()
-		cur.execute("SELECT id, url, news_pattern FROM domains")
+		cur.execute("SELECT id, url, news_pattern FROM domains WHERE id IN (1, 2)")
 		domains = cur.fetchall()
 		threads = []
 		num_domains = len(domains)
@@ -83,7 +80,7 @@ def main():
 			q = queue.Queue()
 			visited = set()
 			visited.add(domain_url)
-			depth = 2
+			depth = 1
 
 			for idx, href in enumerate(domain_graph):
 				is_last = False

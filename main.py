@@ -18,6 +18,7 @@ def _write_to_db(num_total_workers):
 			item = write_db_queue.get()
 			if item is None:
 				remaining_workers -= 1
+				print(f"Worker finishing {remaining_workers}/{num_total_workers}")
 				continue
 			domain_id, url, title, body, timestamp = item
 			cur.execute("SELECT 1 FROM news WHERE domain_id = ? AND (url = ? OR title = ?)", (domain_id, url, title))
@@ -33,7 +34,6 @@ def _bfs(domain_id, domain_url, domain_news_pattern, q, visited, depth):
 		item = q.get()
 		if item is None:
 			write_db_queue.put(None)
-			print(f"{domain_url} finishing")
 			break
 		node_url, node_is_last = item
 		print(node_url)

@@ -1,8 +1,8 @@
-import html_parser
 import database
-import threading
+import html_parser
 import queue
 import re
+import threading
 import utils
 
 
@@ -21,6 +21,7 @@ def _write_to_db(num_total_workers):
 				print(f"Worker finishing {remaining_workers}/{num_total_workers}")
 				continue
 			domain_id, url, title, body, timestamp = item
+			print(f"Inserting {url}")
 			cur.execute("SELECT 1 FROM news WHERE domain_id = ? AND (url = ? OR title = ?)", (domain_id, url, title))
 			if cur.fetchone() is None:
 				cur.execute("SELECT ifnull(max(id)+1, 0) FROM news")
@@ -36,7 +37,6 @@ def _bfs(domain_id, domain_url, domain_news_pattern, q, visited, depth):
 			write_db_queue.put(None)
 			break
 		node_url, node_is_last = item
-		print(node_url)
 		if node_is_last:
 			depth -= 1
 			if depth == 0:
